@@ -1,7 +1,4 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tt9_chat_app_st/view/chat_screen.dart';
 import 'package:tt9_chat_app_st/view/login_screen.dart';
 import 'package:tt9_chat_app_st/view/registration_screen.dart';

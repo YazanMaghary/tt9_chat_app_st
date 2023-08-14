@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tt9_chat_app_st/controllers/LogIn_controller.dart';
 import 'package:tt9_chat_app_st/view/welcome_screen.dart';
 
 import '../constants.dart';
+import '../widgets/bubble_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   static const id = '/chatScreen';
@@ -81,6 +81,9 @@ class ChatScreenState extends State<ChatScreen> {
                   if (snapshot.hasError) {
                     return Text("${snapshot.error}");
                   }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
                   return const Text("Loading");
                 }),
           ),
@@ -94,7 +97,7 @@ class ChatScreenState extends State<ChatScreen> {
                   //Implement logout functionality
                   SharedPreferences prefs =
                       await SharedPreferences.getInstance();
-                  prefs.setBool('isSigned', false).then((value) {
+                  await prefs.setBool('isSigned', false).then((value) {
                     _auth.signOut();
                     Navigator.pushNamedAndRemoveUntil(
                         context, WelcomeScreen.id, (route) => false);
@@ -147,11 +150,19 @@ class ChatScreenState extends State<ChatScreen> {
                                 }),
                           );
                         }
+                        if (snapshot.hasError) {
+                          return Text('${snapshot.error}');
+                        }
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
                         return const Text("Loading");
                       },
                       stream: db
                           .collection('users')
-                          .doc("${credential.currentUser?.email}")
+                          .doc("${credential.currentUser!.email}")
                           .collection('$contactEmail')
                           .orderBy('time', descending: true)
                           .snapshots(),
@@ -159,37 +170,38 @@ class ChatScreenState extends State<ChatScreen> {
                     Container(
                       decoration: kMessageContainerDecoration,
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: <Widget>[
                           Expanded(
                             child: TextField(
-                              onEditingComplete: () {
-                                db
+                              onEditingComplete: () async {
+                                await db
                                     .collection('users')
                                     .doc(contactEmail)
                                     .update({'typing': false});
                                 setState(() {});
                               },
-                              onSubmitted: (value) {
-                                db
+                              onSubmitted: (value) async {
+                                await db
                                     .collection('users')
                                     .doc(contactEmail)
                                     .update({'typing': false});
                                 setState(() {});
                               },
-                              onTapOutside: (event) {
+                              onTapOutside: (event) async {
                                 // isTyping = false;
-                                db
+                                await db
                                     .collection('users')
                                     .doc(contactEmail)
                                     .update({'typing': false});
                                 setState(() {});
                               },
                               controller: text,
-                              onChanged: (value) {
+                              onChanged: (value) async {
                                 //Do something with the user input.
                                 // isTyping = true;
-                                db
+                                await db
                                     .collection('users')
                                     .doc(contactEmail)
                                     .update({'typing': true});
@@ -201,28 +213,36 @@ class ChatScreenState extends State<ChatScreen> {
                           StreamBuilder(
                               stream: db
                                   .collection('users')
-                                  .doc('${credential.currentUser!.email}')
+                                  .doc(credential.currentUser!.email.toString())
                                   .snapshots(),
                               builder: (context, snapshot) {
                                 if (snapshot.hasData) {
-                                  return snapshot.data?['typing'] == true
-                                      ? Text("Typing")
+                                  return snapshot.data!['typing'] == true
+                                      ? const Text("Typing")
                                       : Text('');
                                 }
-                                return Text('loading');
+                                if (snapshot.hasError) {
+                                  return Text('${snapshot.error}');
+                                }
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
+                                }
+                                return const Text('loading');
                               }),
                           TextButton(
-                            onPressed: () {
+                            onPressed: () async {
                               //Implement send functionality.
                               if (contactEmail !=
                                   credential.currentUser!.email) {
-                                db
+                                await db
                                     .collection('users')
                                     .doc('${credential.currentUser!.email}')
                                     .collection('$contactEmail')
                                     .add({
                                   'Text': text.text,
-                                  'email': user?.email,
+                                  'email': user!.email,
                                   'time': DateTime.now(),
                                 }).then((value) {
                                   docid = value.id;
@@ -231,14 +251,14 @@ class ChatScreenState extends State<ChatScreen> {
                                 }).catchError((e) {
                                   print(e);
                                 });
-                                db
+                                await db
                                     .collection('users')
                                     .doc('$contactEmail')
                                     .collection(
                                         '${credential.currentUser!.email}')
                                     .add({
                                   'Text': text.text,
-                                  'email': user?.email,
+                                  'email': user!.email,
                                   'time': DateTime.now(),
                                 }).then((value) {
                                   docid = value.id;
@@ -248,13 +268,13 @@ class ChatScreenState extends State<ChatScreen> {
                                   print(e);
                                 });
                               } else {
-                                db
+                                await db
                                     .collection('users')
                                     .doc('${credential.currentUser!.email}')
                                     .collection('$contactEmail')
                                     .add({
                                   'Text': text.text,
-                                  'email': user?.email,
+                                  'email': user!.email,
                                   'time': DateTime.now(),
                                 }).then((value) {
                                   docid = value.id;
@@ -276,54 +296,5 @@ class ChatScreenState extends State<ChatScreen> {
                   ],
                 ),
               ));
-  }
-}
-
-class BubbleWidget extends StatelessWidget {
-  const BubbleWidget(
-      {super.key,
-      required this.message,
-      required this.sender,
-      required this.isMe});
-
-  final String message;
-  final String sender;
-  final bool isMe;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-          crossAxisAlignment:
-              isMe == true ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Text(
-              sender,
-              style: const TextStyle(color: Colors.black54),
-            ),
-            Material(
-              elevation: 5,
-              borderRadius: isMe == false
-                  ? const BorderRadius.only(
-                      topRight: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                      bottomLeft: Radius.circular(24))
-                  : const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                      bottomLeft: Radius.circular(24)),
-              color: isMe == false ? Colors.white : Colors.lightBlueAccent,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  message,
-                  style: TextStyle(
-                      fontSize: 18,
-                      color: isMe == false ? Colors.black54 : Colors.white),
-                ),
-              ),
-            ),
-          ]),
-    );
   }
 }

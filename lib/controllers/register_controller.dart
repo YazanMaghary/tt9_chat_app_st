@@ -19,7 +19,7 @@ void createUser(context, String? email, String? password) async {
       isSigned
           .collection('users')
           .doc('${credential.currentUser!.email}')
-          .set({}).then((value) async {
+          .set({'typing': false}).then((value) async {
         signed();
         Navigator.pushNamedAndRemoveUntil(
           context,
@@ -77,25 +77,4 @@ Future<UserCredential> signInWithGoogle() async {
 
   // Once signed in, return the UserCredential
   return await FirebaseAuth.instance.signInWithCredential(credential);
-}
-
-googleLogIn(context) async {
-  signInWithGoogle().then((value) async {
-    final isSigned = FirebaseFirestore.instance;
-    isSigned
-        .collection('users')
-        .doc('${credential.currentUser!.email}')
-        .set({}).then((value) async {
-      signed();
-
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        ChatScreen.id,
-        (route) => false,
-      );
-    });
-  }).catchError((onError) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text("*********$onError*********")));
-  });
 }
