@@ -17,7 +17,7 @@ void logIn(context, String? email, String? password) async {
       isSigned
           .collection('users')
           .doc('${credential.currentUser!.email}')
-          .set({}).then((value) async {});
+          .update({});
       Navigator.pushNamedAndRemoveUntil(
         context,
         ChatScreen.id,
@@ -43,7 +43,7 @@ googleLogIn(context) async {
     isSigned
         .collection('users')
         .doc('${credential.currentUser!.email}')
-        .set({}).then((value) async {
+        .update({}).then((value) async {
       signed();
 
       Navigator.pushNamedAndRemoveUntil(
